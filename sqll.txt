@@ -1,0 +1,10 @@
+create table work( ID INTEGER NOT NULL PRIMARY KEY,
+Date text, Work text, Last_Update text, Owner text, Budget text, Team text, Cost text, Total_Earning text, Des text, Status text)
+
+create table people( ID INTEGER NOT NULL PRIMARY KEY,position text, user text,email text, password text,earning  text,paid  text)
+
+
+
+create table order( ID INTEGER NOT NULL PRIMARY KEY,order text, team text,amount text, note  text,status text)
+
+create table files( ID INTEGER NOT NULL PRIMARY KEY,order text, team text,date text, file_name  text)

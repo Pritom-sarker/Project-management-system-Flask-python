@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title> Web Scrapping with Python Flask </title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <style>
+
+        body {
+            font-family: 'Montserrat', sans-serif, arial;
+        }
+
+        h1 {
+          text-align: center;
+          padding: 0.5rem;
+        }
+
+        .w6 {
+            min-width: 10rem;
+        }
+
+        tr th:nth-child(1),
+        tr th:nth-child(2) {
+            min-width: 2rem;
+        }
+
+        .w10 {
+            width: 10rem !important;
+        }
+
+        .scroll_enable {
+          max-height: 72vh;
+          max-width: 90%;
+          overflow: auto;
+        }
+
+        .top_buttons,
+        .pagination {
+          max-width: 90%;
+          margin: auto;
+        }
+
+    </style>
+
+</head>
+<body>
+    <!--     navbar -->
+    {% include "header.html" %}
+ <!-- error massage -->
+ <div class="container" style="max-width: 90%;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+<!--    inner body-->
+    <div class="row">
+
+  <div class="col-sm-2"></div>
+  <div class="col-sm-8">
+    <h1>Add new order</h1><br><br>
+    <form  action="/insert_new_order" method="POST" enctype="multipart/form-data">
+
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-2 col-form-label">Title</label>
+          <div class="col-sm-10">
+            <input  class="form-control" name="title" placeholder="Name">
+          </div>
+        </div>
+
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-2 col-form-label">Budget</label>
+          <div class="col-sm-10">
+            <input  class="form-control" name="budget" placeholder="Budget">
+          </div>
+        </div>
+        
+        <div class="form-group row">
+            <label for="inputEmail3" class="col-sm-2 col-form-label">Buyer</label>
+            <div class="col-sm-10">
+                <select class="custom-select" name="buyer">
+                    {% for thread in buyer %}
+                    <option value= {{ thread.user }} style="color:black;"   >{{ thread.user }}</option>
+                    {% endfor %}
+                  </select>
+            </div>
+          </div>
+        
+          <div class="form-group row">
+              <label for="inputEmail3" class="col-sm-2 col-form-label">Team</label>
+              <div class="col-sm-8">
+                  <select class="custom-select" name="T1">
+                    <option value= '0' style="color:black;">Team 1</option>
+                    {% for thread in team %}
+                    <option value= {{ thread.user }} style="color:black;">{{ thread.user }}</option>
+                    {% endfor %}
+                    </select>
+              </div>
+              <div class="col-sm-2">
+                <input  class="form-control"  name="P1" placeholder="Price">
+              </div>
+            </div>
+            
+        
+            <div class="form-group row">
+                <label for="inputEmail3" class="col-sm-2 col-form-label">Team</label>
+                <div class="col-sm-8">
+                    <select class="custom-select" name="T2">
+                        <option value= '0' style="color:black;">Team 2</option>
+                        {% for thread in team %}
+                        <option value= {{ thread.user }} style="color:black;">{{ thread.user }}</option>
+                        {% endfor %}
+                      </select>
+                </div>
+                <div class="col-sm-2">
+                  <input  class="form-control"  name="P2" placeholder="Price">
+                </div>
+              </div>
+        
+        
+              <div class="form-group row">
+                <label for="inputEmail3" class="col-sm-2 col-form-label">Team</label>
+                <div class="col-sm-8">
+                    <select class="custom-select" name="T3">
+                        <option value= '0' style="color:black;">Team 3</option>
+                        {% for thread in team %}
+                        <option value= {{ thread.user }} style="color:black;">{{ thread.user }}</option>
+                        {% endfor %}
+                      </select>
+                </div>
+                <div class="col-sm-2">
+                  <input  class="form-control"  name="P3" placeholder="Price">
+                </div>
+              </div>
+
+                <!--Material textarea-->
+                <div class="form-group row">
+                    <label for="inputEmail3" class="col-sm-2 col-form-label">Description</label>
+                    <div class="col-sm-10">
+                        <textarea class="form-control" name="des"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- file upload -->
+                  
+                  <div class="form-group row">
+                    <label for="inputEmail3" class="col-sm-2 col-form-label">Team</label>
+                    <div class="col-sm-2">
+                      <input  class="form-control"  name="dead" placeholder="Deadline">
+                    </div>
+                    <div class="col-sm-8">
+                    </div>
+                  </div>
+                    
+                  <div class="form-group row">
+                    <label for="inputEmail3" class="col-sm-2 col-form-label">Files</label>
+                    <div class="col-sm-2">
+                      <input  class="form-control" type="file"  name="file" placeholder="Deadline">
+                    </div>
+                    <div class="col-sm-8">
+                    </div>
+                  </div>
+
+        <div class="form-group row">
+          <div class="col-sm-2">Send Email</div>
+          <div class="col-sm-10">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="check">
+              <label class="form-check-label" for="gridCheck1">
+                Yes
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="form-group row">
+          <div class="col-sm-10">
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </div>
+      </form>
+
+   
+  </div>
+
+
+  <div class="col-sm-2"></div>
+
+    </div>
+
+
+    {% include "footer.html" %}
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+
+
+</html>
