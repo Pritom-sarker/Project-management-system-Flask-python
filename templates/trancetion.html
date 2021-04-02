@@ -54,7 +54,7 @@
 <body>
     <!--     navbar -->
     
-    {% include "header.html" %}
+    {% include "head_team.html" %}
     
 
 
@@ -76,20 +76,17 @@
   <div class="col-sm-8">
     <br>
 <!--    add upper card-->
-    
+        
 
 <!--      main table-->
-    <br><br><h1>All Orders</h1><br><br>
+    <br><br><h1>All Transactions</h1><br><br>
     <div class="container scroll_enable">
         <table class="table table-striped">
 
             <thead>
               <tr>
-                <th scope="col"> ID </th>
-                <th scope="col" class="w6"> Deadline </th>
-                <th scope="col"> Title </th>
-                <th scope="col" class="w6"> Budget </th>
-                <th scope="col"> Team </th>
+                <th scope="col" class="w6"> Date </th>
+                <th scope="col"> Amount </th>
               </tr>
             </thead>
           
@@ -97,12 +94,8 @@
               {% for thread in threads.items %}
               
               <tr>
-                <th>{{ thread.ID }}  </th>
-                <th> {{ thread.Date }} </th>
-                <th> <a href="{{  '/order_owner?q={}'.format(thread.ID) }}">{{ thread.Work }} </a></th>
-                <th> {{ thread.Budget }} </th>
-                
-                <th> {{ thread.Team }} </th>
+                <th>{{ thread.date }}  </th>
+                <th> {{ thread.amount }} </th>
               </tr>
        
               {% endfor %}
@@ -111,13 +104,14 @@
           </table>
 
   </div>
+  
   <!-- pagination -->
   <div class="container pagination gap-2 mb-2 mt-2">
     {% for page in threads.iter_pages(left_edge=3, right_edge=3, left_current=3, right_current=3) %}
 
       <div class="btn-group">
         {% if page %}
-          <a href="{{ url_for('all_order', page_num=page) }}" class="btn btn-primary"> {{ page }} </a>
+          <a href="{{ url_for('owner', page_num=page) }}" class="btn btn-primary"> {{ page }} </a>
         {% else %}
            ...
         {% endif %}

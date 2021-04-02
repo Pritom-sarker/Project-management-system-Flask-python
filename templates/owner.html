@@ -74,7 +74,7 @@
     <div class="row">
   <div class="col-sm-2"></div>
   <div class="col-sm-8">
-    <br><h1>Overview</h1>
+    <br><h1>Overview Of This Month</h1>
 <!--    add upper card-->
     <div class="row">
   <div class="col-sm-4">
@@ -144,7 +144,7 @@
   <div class="col-sm-4">
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title">Total Amount : {{ (over[2]|int)+(over[0]|int)*80  }} BDT</h5>
+        <h5 class="card-title">Total Amount : {{ ((over[2]|int)+(over[0]|int))*80  }} BDT</h5>
       </div>
     </div>
   </div>
@@ -171,7 +171,7 @@
             <tr>
               <th>{{ thread.ID }}  </th>
               <th> {{ thread.deadline }} </th>
-              <th> <a href="{{  './order_owner?q={}'.format(thread.ID) }}">{{ thread.Work }} </a></th>
+              <th> <a href="{{  '/order_owner?q={}'.format(thread.ID) }}">{{ thread.Work }} </a></th>
               <th> {{ thread.Budget }} </th>
               
               <th> {{ thread.Team }} </th>
@@ -183,6 +183,7 @@
         </table>
 
   </div>
+  <br>
   <!-- pagination -->
   <div class="container pagination gap-2 mb-2 mt-2">
     {% for page in threads.iter_pages(left_edge=3, right_edge=3, left_current=3, right_current=3) %}
@@ -197,7 +198,7 @@
 
     {% endfor %}
   </div>
-
+  <br><br>
   </div>
   <div class="col-sm-2"></div>
 

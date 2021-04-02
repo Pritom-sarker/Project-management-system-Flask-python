@@ -11,7 +11,7 @@ import os
 from werkzeug.utils import secure_filename
 import pandas as pd
 import datetime
-
+import mail
 
 UPLOAD_FOLDER = '/uploads'
 ALLOWED_EXTENSIONS = { 'rar', 'zip'}
@@ -24,7 +24,7 @@ db = SQLAlchemy(app)
 #   generate a secret key for forms
 app.config['SECRET_KEY'] = '94692de71c05d2759ecc4bfd5d5ec4f0'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
-app.config['TEXT_FILE_UPLOAD'] = './uploads'
+app.config['TEXT_FILE_UPLOAD'] = '/uploads'
 app.config['ALLOWED_IMAGE_EXTENSION'] = 'ZIP'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -55,7 +55,7 @@ class work(db.Model):
     ID = db.Column(db.Integer, primary_key=True)
     Date = db.Column(db.String())
     Work = db.Column(db.String())
-    Last_Update = db.Column(db.String())
+    notes = db.Column(db.String())
     Owner = db.Column(db.String())
     Budget = db.Column(db.String())
     Team = db.Column(db.String())
@@ -66,8 +66,8 @@ class work(db.Model):
     deadline = db.Column(db.String())
     end_time = db.Column(db.String())
     def __repr__(self):
-        return f"stock('{self.ID}','{self.Date}','{self.Work}','{self.Date}','{self.Last_Update}','{self.Owner}','" \
-               f"{self.Budget}','{self.Team}','{self.Cost}','{self.Total_Earning}','{self.Des}','{self.Status}','{self.deadline}','{self.end_time})"
+        return f"stock('{self.ID}','{self.Date}','{self.Work}','{self.Date}','{self.Owner}','" \
+               f"{self.Budget}','{self.Team}','{self.Cost}','{self.Total_Earning}','{self.Des}','{self.Status}','{self.deadline}','{self.end_time}','{self.notes})"
 
 
 
@@ -93,6 +93,16 @@ class project(db.Model):
     def __repr__(self):
         return f"people('{self.team}','{self.project}','{self.amount}','{self.status})"
 
+
+class money(db.Model):
+    ID = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer)
+    amount = db.Column(db.String())
+    date = db.Column(db.String())
+
+    def __repr__(self):
+        return f"people('{self.ID}','{self.team}','{self.amount}','{self.date})"
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -106,7 +116,15 @@ def check_login():
         print('Err')
         return False
 
-
+def check_login_team():
+    try:
+        print(session['id'] , session['Type'])
+        if session['id'] and session['Type']=='Team' :
+            print('login')
+            return True
+    except:
+        print('Err')
+        return False
 
 @app.route('/', methods=['GET', 'POST'], defaults={"page_num": 1})
 def index(page_num):
@@ -132,21 +150,66 @@ def login():
                     flash('Your login successfully', 'success')
                     return redirect(url_for('owner'))
                 else:
-                    flash('Please input a valid Login!!', 'danger')
-                    return render_template('index.html')
-
+                    return redirect(url_for('team'))
             else:
                 flash('Please input a valid Login!!', 'danger')
                 return render_template('index.html')
-
-
     else:
         flash('Please input a valid Login!!', 'danger')
         return render_template('index.html')
 
 
+# team dash
+@app.route('/team', methods=['GET', 'POST'], defaults={"page_num": 1})
+@app.route('/team/<int:page_num>', methods=['GET', 'POST'])
+def team(page_num):
+    if not check_login_team():
+        return  render_template('index.html')
+
+    date_1 = datetime.datetime.now()
+    dead = date_1.strftime('%b')
+    form = searchFile()
+
+    # take all the projects
+
+    all_project= project.query.filter_by(team=session['name'])
+    projects_by_him=[]
+    for proj in all_project:
+        projects_by_him.append([proj.project,proj.amount])
+
+
+    complete_proj=0
+    complete_money=0
+
+
+    running_proj=0
+    running_money=0
+
+    running_work=[]
+    for proj in projects_by_him:
+        temp = work.query.filter_by(ID=proj[0])
+        if temp[0].Status == 'Active' or temp[0].Status == 'Rivision' :
+            print(temp[0])
+            running_work.append(temp[0])
+            running_proj+=1
+            running_money+=float(proj[1])
+
+        elif temp[0].Status == 'Complete':
+            complete_proj+=1
+            complete_money+=float(proj[1])
+
+    mon = money.query.filter_by(team_id=session['id'])
+
+    total_paid=0
+    for m in mon:
+        total_paid+=float(m.amount)
+
+    balance = complete_money-total_paid
+    return render_template('team_dash.html',threads=running_work,  over=(complete_proj,complete_money,running_proj,running_money,total_paid,balance),form=form)
+
+
 @app.route('/owner', methods=['GET', 'POST'], defaults={"page_num": 1})
-@app.route('/<int:page_num>', methods=['GET', 'POST'])
+@app.route('/owner/<int:page_num>', methods=['GET', 'POST'])
 def owner(page_num):
     if not check_login():
         return  render_template('index.html')
@@ -165,7 +228,7 @@ def owner(page_num):
             com_order+=1
             com_price+=float(proj.Total_Earning)
 
-    all_project=work.query.filter((work.Status=='Active') |(work.Status=='Rivision') )
+    all_project=work.query.filter((work.Status=='Active') |(work.Status=='Rivision')).order_by(work.Date.desc())
 
     total_running = 0
     total_order=0
@@ -189,6 +252,25 @@ def add_user():
 
     return render_template('add_user.html', form=form)
 
+
+@app.route('/add_money', methods=['GET', 'POST'])
+def add_money():
+    if not check_login():
+        return render_template('index.html')
+    form = searchFile()
+    team = request.form["team"]
+    pas = request.form["amnt"]
+    row = money(team_id=team,
+                 date=datetime.datetime.now().strftime('%b %d,%Y %H:%M'),
+                 amount=pas)
+
+    db.session.add(row)
+    db.session.commit()
+
+    return redirect(url_for('user_list'))
+
+
+
 @app.route('/files_upload', methods=['GET', 'POST'])
 def files_upload():
     print('Here')
@@ -205,7 +287,7 @@ def files_upload():
         else:
             filename = secure_filename(text.filename)
             try:
-                os.mkdir('./uploads/{}'.format(ind))
+                os.mkdir('/uploads/{}'.format(ind))
             except:
                 pass
 
@@ -218,10 +300,39 @@ def files_upload():
 
             db.session.add(row)
             db.session.commit()
-    # else:
-    #     print('ekse')
-    return redirect(('/order_owner?q='+ind))
 
+    if  check_login():
+        return redirect(('/order_owner?q='+ind))
+    else:
+        return redirect(('/order_team?q=' + ind))
+
+@app.route('/add_notes', methods=['GET', 'POST'])
+def add_notes():
+    # if check_login():
+    #     return render_template('index.html')
+
+    ind = (request.args.get('q'))
+
+    thread = work.query.filter_by(ID=ind)
+    try:
+        date_1 = datetime.datetime.strptime(thread[0].deadline, '%b %d,%Y %H:%M:%S')
+        d = date_1 + datetime.timedelta(days=int(request.form["time"]))
+        dead = d.strftime('%b %d,%Y %H:%M:%S')
+
+        thread[0].deadline = dead
+    except:
+        pass
+    #print(thread[0].notes)
+    try:
+        thread[0].notes += '+' + request.form["note"]
+    except:
+
+        thread[0].notes = request.form["note"]+ '+'
+
+    db.session.commit()
+
+
+    return redirect(('/order_owner?q='+ind))
 
 @app.route('/add_new_user', methods=['GET', 'POST'], defaults={"page_num": 1})
 def add_new_user(page_num):
@@ -232,9 +343,8 @@ def add_new_user(page_num):
 
 @app.route('/logout', methods=['GET', 'POST'], defaults={"page_num": 1})
 def logout(page_num):
-    if not check_login():
-        return render_template('index.html')
     session.pop('id', None)
+    session.pop('name', None)
     session.pop('Type', None)
     return render_template('index.html')
 
@@ -335,15 +445,17 @@ def insert_new_order(page_num):
 
 
         new_time  = datetime.datetime.now().strftime('%b %d,%Y %H:%M')
-
+        try:
+            final= str(float(budget) - float(cost))
+        except:
+            final = str(float(budget))
         row = work(Date=str( new_time),
                            Work=name,
-                           Last_Update ='',
                            Owner=pas,
                            Budget=budget,
                            Team=team ,
                            Cost=cost,
-                           Total_Earning=str(int(budget)-cost),
+                           Total_Earning=final,
                            Des=des,
                            deadline=dead,
                            Status='Active')
@@ -353,32 +465,51 @@ def insert_new_order(page_num):
         if request.files:
             text = request.files["file"]
 
-            if text.filename == '':
-                flash('Your file do not have a name, please resubmit', 'danger')
 
             if not allowed_file(text.filename):
-                flash('Please upload a valid .txt file', 'danger')
+                flash('Please upload a valid .zip file', 'danger')
 
             else:
                 filename = secure_filename(text.filename)
                 text.save(os.path.join(app.config['TEXT_FILE_UPLOAD'], filename))
                 flash('Your file submitted successfully', 'success')
 
-        temp =  work.query.filter_by(Date=new_time)
+        temp1 =  work.query.filter_by(Date=new_time)
 
         try:
-            insert_project_with_team(T1,temp[0].ID,P1)
+            insert_project_with_team(T1,temp1[0].ID,P1)
+            temp = people.query.filter_by(user=T1)
+            print(temp[0].email)
+            s = '{},\nWork Title: {}\n Budget: {}\n\nFor more information please login\nLink: https://accountbook.xyz/\nEmail: {}\nPassword: {}'.format(T1,name,str(P1)
+                                                                                                                                                   ,str(temp[0].email)
+                                                                                                                                                       ,str(temp[0].password))
+            mail.send_email(temp[0].email,'Congratulation!! You got a new order',s)
+
         except:
             pass
 
 
         try:
-            insert_project_with_team(T2,temp[0].ID,P2)
+            insert_project_with_team(T2,temp1[0].ID,P2)
+            temp = people.query.filter_by(user=T2)
+            print(temp[0].email)
+            s = '{},\nWork Title: {}\n Budget: {}\n\nFor more information please login\nLink: https://accountbook.xyz/\nEmail: {}\nPassword: {}'.format(
+                T2, name, str(P2)
+                , str(temp[0].email)
+                , str(temp[0].password))
+            mail.send_email(temp[0].email, 'Congratulation!! You got a new order', s)
         except:
             pass
 
         try:
-            insert_project_with_team(T3,temp[0].ID,P3)
+            insert_project_with_team(T3,temp1[0].ID,P3)
+            temp = people.query.filter_by(user=T3)
+            print(temp[0].email)
+            s = '{},\nWork Title: {}\n Budget: {}\n\nFor more information please login\nLink: https://accountbook.xyz/\nEmail: {}\nPassword: {}'.format(
+                T3, name, str(P3)
+                , str(temp[0].email)
+                , str(temp[0].password))
+            mail.send_email(temp[0].email, 'Congratulation!! You got a new order', s)
         except:
             pass
 
@@ -394,26 +525,46 @@ def insert_new_order(page_num):
 
 @app.route('/download')
 def downloadFile ():
+
     date = datetime.datetime.now().strftime('%b_%d_%Y_%H_%M')
 
     ind = (request.args.get('q'))
     print(ind)
-    #For windows you need to use drive name [ex: F:/Example.pdf] ./uploads\\
     path = r"{}".format(str(ind[2:]).replace('/','\\'))
     return send_file(path, as_attachment=True)
 
-@app.route('/order_owner', methods=['GET', 'POST'], defaults={"page_num": 1})
-def order_owner(page_num):
+
+
+@app.route('/order_team', methods=['GET', 'POST'], defaults={"page_num": 1})
+def order_team(page_num):
+    
+    if not check_login_team():
+        if check_login():
+            return redirect("/order_owner?q=" + (request.args.get('q')))
+        return render_template('index.html')
+    form = searchFile()
+    ind = (request.args.get('q'))
+    threads = work.query.filter_by(ID=ind)
+    user = project.query.filter((project.project==ind) & (project.team==session['name']))
+    all_user=people.query.filter_by(position='Team')
+
+    fils = files.query.filter_by(order_id=ind)
+    return render_template('team_order.html', work=threads[0],user=user,all_user = all_user,form=form,down=fils)
+
+
+@app.route('/order_owner', methods=['GET', 'POST'])
+def order_owner():
     if not check_login():
         return render_template('index.html')
     form = searchFile()
     ind = (request.args.get('q'))
     threads = work.query.filter_by(ID=ind)
-    user = project.query.filter_by(project=ind)
+    user = project.query.filter_by(project=ind )
     all_user=people.query.filter_by(position='Team')
 
     fils = files.query.filter_by(order_id=ind)
-    return render_template('owner_order.html', work=threads[0],user=user,all_user = all_user,form=form,down=fils)
+    ntes = str(threads[0].notes).split('+')
+    return render_template('owner_order.html', work=threads[0],user=user,all_user = all_user,form=form,down=fils,notes=ntes)
 
 @app.route('/update_order_status', methods=['GET', 'POST'], defaults={"page_num": 1})
 def update_order_status(page_num):
@@ -435,7 +586,7 @@ def update_order_status(page_num):
 
 
 @app.route('/User_list', methods=['GET', 'POST'], defaults={"page_num": 1})
-@app.route('/<int:page_num>', methods=['GET', 'POST'])
+@app.route('/User_list/<int:page_num>', methods=['GET', 'POST'])
 def user_list(page_num):
     if not check_login():
         return render_template('index.html')
@@ -459,13 +610,59 @@ def delete_user(page_num):
 
 
 @app.route('/all_order', methods=['GET', 'POST'], defaults={"page_num": 1})
-@app.route('/<int:page_num>', methods=['GET', 'POST'])
+@app.route('/all_order/<int:page_num>', methods=['GET', 'POST'])
 def all_order(page_num):
     if not check_login():
         return render_template('index.html')
     form = searchFile()
-    threads = work.query.filter_by().paginate(per_page=10, page=page_num)
+    threads = work.query.filter_by().order_by(work.Date.asc()).paginate(per_page=10, page=page_num)
     return render_template('all_orders.html', threads=threads)
+
+
+
+
+@app.route('/all_order_team', methods=['GET', 'POST'], defaults={"page_num": 1})
+@app.route('/all_order_team/<int:page_num>', methods=['GET', 'POST'])
+def all_order_team(page_num):
+    if not check_login_team():
+        return render_template('index.html')
+
+    # take all the projects
+
+    all_project= project.query.filter_by(team=session["name"]).order_by(project.ID.desc())
+    projects_by_him=[]
+    for proj in all_project:
+        projects_by_him.append([proj.project,proj.amount])
+
+    thread=[]
+    for proj in projects_by_him:
+        data = proj
+        temp = work.query.filter_by(ID=proj[0])
+        data.append(temp[0].Work)
+        data.append(temp[0].Status)
+        data.append(proj[0])
+        data.append(temp[0].Date)
+        thread.append(data)
+
+    return render_template('all_order_team.html',threads=thread)
+
+
+@app.route('/Transaction', methods=['GET', 'POST'], defaults={"page_num": 1})
+@app.route('/Transaction/<int:page_num>', methods=['GET', 'POST'])
+def Transaction(page_num):
+    if not check_login_team():
+        return render_template('index.html')
+
+    # take all the projects
+
+    all_project= money.query.filter_by(team_id=session["id"]).paginate(per_page=10, page=page_num)
+
+    # monthly curve
+
+
+    return render_template('trancetion.html',threads=all_project)
+
+
 
 @app.route('/add_budget', methods=['GET', 'POST'], defaults={"page_num": 1})
 def change_order_price(page_num):
@@ -519,40 +716,56 @@ def delete_team(page_num):
     peo = project.query.filter((project.team==name) & (project.project==ind))
 
     db.session.delete(peo[0])
+
+
     db.session.commit()
 
     return redirect(('order_owner?q='+ind))
 
 
-@app.route('/team_dash', methods=['GET', 'POST'], defaults={"page_num": 1})
-def team_dash(page_num):
-    if not check_login():
-        return render_template('index.html')
+
+@app.route('/team_person', methods=['GET', 'POST'], defaults={"page_num": 1})
+def team_person(page_num):
     date_1 = datetime.datetime.now()
     dead = date_1.strftime('%b')
     form = searchFile()
+    id =(request.args.get('id'))
+    name = (request.args.get('name'))
+    # take all the projects
 
-    all_project = work.query.filter((work.end_time.like('%{}%'.format(dead))))
-
-    com_price = 0
-    com_order = 0
+    all_project = project.query.filter_by(team=name)
+    projects_by_him = []
     for proj in all_project:
-        if 'Com' in proj.Status:
-            com_order += 1
-            com_price += float(proj.Total_Earning)
+        projects_by_him.append([proj.project, proj.amount])
 
-    all_project = work.query.filter((work.Status == 'Active') | (work.Status == 'Rivision'))
+    complete_proj = 0
+    complete_money = 0
 
-    total_running = 0
-    total_order = 0
-    for proj in all_project:
-        total_order += 1
-        total_running += float(proj.Total_Earning)
+    running_proj = 0
+    running_money = 0
 
-    threads = work.query.filter((work.Status == 'Active') | (work.Status == 'Rivision')).paginate(per_page=10,
-                                                                                                  page=page_num)
+    running_work = []
+    for proj in projects_by_him:
+        temp = work.query.filter_by(ID=proj[0])
+        if temp[0].Status == 'Active' or temp[0].Status == 'Rivision':
+            print(temp[0])
+            running_work.append(temp[0])
+            running_proj += 1
+            running_money += float(proj[1])
 
-    return render_template('team_dash.html', threads=threads, over=(com_price, com_order, total_running, total_order),
+        elif temp[0].Status == 'Complete':
+            complete_proj += 1
+            complete_money += float(proj[1])
+
+    mon = money.query.filter_by(team_id=id)
+
+    total_paid = 0
+    for m in mon:
+        total_paid += float(m.amount)
+
+    balance = complete_money - total_paid
+    return render_template('team_dash.html', threads=running_work,
+                           over=(complete_proj, complete_money, running_proj, running_money, total_paid, balance),
                            form=form)
 
 

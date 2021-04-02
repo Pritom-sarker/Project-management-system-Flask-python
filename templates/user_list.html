@@ -71,9 +71,24 @@
 <!--    inner body-->
     <div class="row">
   <div class="col-sm-2"></div>
-  <div class="col-sm-8">
-    <br>
 
+  <div class="col-sm-8">
+    <br><br>
+    <h1>Send Money</h1>
+    <form class="form-inline form-group"  style="align-items: center;" action="/add_money" method="POST" enctype="multipart/form-data">
+      <div class="form-group mb-2">
+        <select class="custom-select" name="team">
+            {% for thread in threads.items %}
+            <option value= {{ thread.ID }} style="color:black;"   >{{ thread.user }}</option>
+            {% endfor %}
+          </select>
+      </div>
+      <div class="form-group mx-sm-3 mb-2">
+        <label for="inputPassword2" class="sr-only">Amount</label>
+        <input  class="form-control" name="amnt" placeholder="Amount">
+      </div>
+      <button type="submit" class="btn btn-primary mb-2">Send Money</button>
+    </form>
 <!--      main table-->
     <br>
     <h1>User List</h1>
@@ -97,11 +112,11 @@
             
             <tr>
               <th> {{ thread.position }} </th>
-              <th> {{ thread.user }} </th>
+              <th> <a href="{{  '/team_person?id={}&name={}'.format(thread.ID,thread.user) }}">{{ thread.user }} </a></th>
               <th> {{ thread.email }} </th>
               <th> {{ thread.password }} </th>
 
-              <th><button type="button" class="btn btn-dark"><a href="{{  './delete_user?q={}'.format(thread.ID) }}">Delete</a></button>  </th>
+              <th><button type="button" class="btn btn-dark"><a href="{{  '/delete_user?q={}'.format(thread.ID) }}">Delete</a></button>  </th>
             </tr>
      
             {% endfor %}
@@ -116,7 +131,7 @@
 
       <div class="btn-group">
         {% if page %}
-          <a href="{{ url_for('owner', page_num=page) }}" class="btn btn-primary"> {{ page }} </a>
+          <a href="{{ url_for('user_list', page_num=page) }}" class="btn btn-primary"> {{ page }} </a>
         {% else %}
            ...
         {% endif %}
